@@ -9,9 +9,7 @@ from googleapiclient.errors import HttpError
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
 def main():
-    """Shows basic usage of the Gmail API.
-    Lists the user's Gmail messages.
-    """
+    """List Gmail messages with specific subject lines."""
     creds = None
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
@@ -28,20 +26,23 @@ def main():
     try:
         # Call the Gmail API to fetch INBOX messages
         service = build("gmail", "v1", credentials=creds)
-        results = service.users().messages().list(userId="me", labelIds=["INBOX"]).execute()
+        query = "subject:'Você recebeu uma transferência!' OR subject:'Você recebeu uma transferência pelo PIX!'"
+        results = service.users().messages().list(userId="me", q=query).execute()
         messages = results.get("messages", [])
 
         if not messages:
             print("No messages found.")
             return
 
-        print("Messages:")
+        print("Filtered Messages:")
         for message in messages:
             msg = service.users().messages().get(userId="me", id=message["id"]).execute()
-            if "Transferência recebida" in msg["snippet"]:
-                print(f"Message snippet: {msg['snippet']}")
-
-
+            subject = None
+            for header in msg['payload']['headers']:
+                if header['name'] == 'Subject':
+                    subject = header['value']
+                    break
+            print(f"Message subject: {subject}")
 
     except HttpError as error:
         print(f"An error occurred: {error}")
